@@ -139,6 +139,8 @@ int FSAIApp::init_jog_module() {
 			mainWindow->ui->textBrowser->append("Failed");
 		}
 		zScanner->resume();
+		// 更新速度
+		update_speedRatio();
 	});
 	QObject::connect(mainWindow->ui->radioButton_2, &QRadioButton::clicked, this, [&]() {
 		zScanner->pause();
@@ -147,6 +149,8 @@ int FSAIApp::init_jog_module() {
 			mainWindow->ui->textBrowser->append("Failed");
 		}
 		zScanner->resume();
+		// 更新速度
+		update_speedRatio();
 	});	
 
 	// 点动界面
@@ -372,6 +376,14 @@ void FSAIApp::load_procedure_param(int idx) {
 
 	// 启用摆焊
 	procedureWindow->ui->groupBox_7->setChecked(waveCfg.Id > 0);
+	procedureWindow->ui->comboBox_3->setCurrentIndex(waveCfg.Shape);
+	procedureWindow->ui->doubleSpinBox_7->setValue(waveCfg.Freq);
+	procedureWindow->ui->doubleSpinBox_8->setValue(waveCfg.LeftWidth);
+	procedureWindow->ui->doubleSpinBox_9->setValue(waveCfg.RightWidth);
+	procedureWindow->ui->spinBox_4->setValue(waveCfg.Dwell_left);
+	procedureWindow->ui->spinBox_5->setValue(waveCfg.Dwell_right);
+	procedureWindow->ui->radioButton_2->setChecked(waveCfg.Dwell_type == 0);
+	procedureWindow->ui->radioButton->setChecked(waveCfg.Dwell_type == 1);
 }
 
 void FSAIApp::save_current_procedure_param() {
@@ -386,6 +398,13 @@ void FSAIApp::save_current_procedure_param() {
 
 	// 启用摆焊
 	waveCfg.Id = procedureWindow->ui->groupBox_7->isChecked() ? 1 : 0;
+	waveCfg.Shape = procedureWindow->ui->comboBox_3->currentIndex();
+	waveCfg.Freq = procedureWindow->ui->doubleSpinBox_7->value();
+	waveCfg.LeftWidth = procedureWindow->ui->doubleSpinBox_8->value();
+	waveCfg.RightWidth = procedureWindow->ui->doubleSpinBox_9->value();
+	waveCfg.Dwell_left = procedureWindow->ui->spinBox_4->value();
+	waveCfg.Dwell_right = procedureWindow->ui->spinBox_5->value();
+	waveCfg.Dwell_type = procedureWindow->ui->radioButton_2->isChecked() ? 0 : 1;
 
 	procData[idx].set_appendix(serialize_weld_param(waveCfg, weldCfg, trackCfg));
 }
