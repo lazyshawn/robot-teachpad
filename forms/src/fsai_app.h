@@ -4,6 +4,8 @@
 #include <chrono>
 
 #include "fsai_mainwindow.h"
+#include "fsai_procedure.h"
+
 #include "zmotion_interface.h"
 
 class RobotStatus {
@@ -40,12 +42,17 @@ class FSAIApp : public QMainWindow {
 Q_OBJECT
 
 private:
+	// 窗口
 	std::shared_ptr<MainWindow> mainWindow;
-	std::shared_ptr<ZauxRobot> robot;
-	std::shared_ptr<RobotStatus> robotStatus;
+	std::shared_ptr<ProcedureWindow> procedureWindow;
 
 	std::shared_ptr<ZmotionScanner> zScanner;
 	std::shared_ptr<QThread> zScannerThread;
+
+	std::shared_ptr<ZauxRobot> robot;
+	std::shared_ptr<RobotStatus> robotStatus;
+
+	std::vector<TrajectoryConfig<float>> procData;
 
 public:
 	FSAIApp();
@@ -57,12 +64,19 @@ public:
 	int init_menu_module();
 	int init_monitor_module();
 	int init_log_module();
+	int init_control_module();
 
 	int connect_robot();
 	int disconnect_robot();
 
+	std::vector<float> read_teach_point(int row, const std::vector<float>& idxList);
+	void load_procedure_param(int idx);
+	void save_current_procedure_param();
+	void update_speedRatio();
+
 public slots:
 	void switch_connection();
 	void refresh_monitor();
+	void excute_selected_teach_point();
 };
 

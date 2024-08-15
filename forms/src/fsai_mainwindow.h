@@ -33,6 +33,9 @@ public:
 	MainWindow();
 	virtual ~MainWindow();
 
+	void refresh_display_switch_auto(bool manual);
+	void refresh_display_switch_online(bool online);
+
 private:
 	int init_connect_module();
 	int init_jog_module();
@@ -40,6 +43,7 @@ private:
 	int init_menu_module();
 	int init_monitor_module();
 	int init_log_module();
+
 
 Q_OBJECT
 public slots:

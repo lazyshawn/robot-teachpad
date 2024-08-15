@@ -3,6 +3,9 @@
 
 #include <iostream>
 
+/**
+* @brief  扫描定时器
+*/
 ZmotionScanner::ZmotionScanner(std::shared_ptr<RobotStatus> status_, std::shared_ptr<ZauxRobot> robot_) {
 	status = status_;
 	robot = robot_;
@@ -72,13 +75,18 @@ void ZmotionScanner::stop() {
 	scannerStatus = 0;
 }
 
+
+
+/**
+* @brief  主窗口
+*/
 FSAIApp::FSAIApp() {
 	// 资源初始化
 	robot = std::make_shared<ZauxRobot>();
 	robotStatus = std::shared_ptr<RobotStatus>(new RobotStatus);
 
 	mainWindow = std::shared_ptr<MainWindow>(new MainWindow);
-	//procedureWindow = std::shared_ptr<ProcedureWindow>(new ProcedureWindow);
+	procedureWindow = std::shared_ptr<ProcedureWindow>(new ProcedureWindow);
 
 	// 显示主页
 	mainWindow->show();
@@ -88,6 +96,8 @@ FSAIApp::FSAIApp() {
 
 	init_jog_module();
 	init_teach_module();
+	init_menu_module();
+	init_control_module();
 
 	// 开始监控
 	zScanner = std::make_shared<ZmotionScanner>(robotStatus, robot);
@@ -97,16 +107,13 @@ FSAIApp::FSAIApp() {
 	QObject::connect(zScanner.get(), &ZmotionScanner::trigger_update, this, &FSAIApp::refresh_monitor);
 	zScannerThread->start();
 
-	/*
-	// 禁用控制面板
-	mainWindow->ui->groupBox->setEnabled(0);
-	mainWindow->ui->groupBox_2->setEnabled(0);
-	*/
+	// 初始化控制面板
+	mainWindow->refresh_display_switch_online(false);
 }
 
 FSAIApp::~FSAIApp() {
-	zScanner->stop();
 	// 结束监控
+	zScanner->stop();
 	zScannerThread->quit();
 	zScannerThread->wait();
 
@@ -115,6 +122,7 @@ FSAIApp::~FSAIApp() {
 	}
 }
 
+// 初始化
 int FSAIApp::init_connect_module() {
 	// 连接模块
 	QObject::connect(mainWindow->ui->pushButton, &QPushButton::pressed, this, &FSAIApp::switch_connection);
@@ -191,22 +199,45 @@ int FSAIApp::init_teach_module() {
 		mainWindow->ui->tableWidget->setItem(row, 4, item);
 
 		// 附加轴位置
-		posStr = QString::number(robotStatus->jPos[robot->jointAxisIdx.size() + 1]);
+		posStr = QString::number(robotStatus->jPos[robot->jointAxisIdx.size()]);
 		for (size_t i = robot->jointAxisIdx.size()+1; i < robotStatus->jPos.size(); ++i) {
 			posStr += ", " + QString::number(robotStatus->jPos[i]);
 		}
 		item = new QTableWidgetItem(posStr);
 		mainWindow->ui->tableWidget->setItem(row, 5, item);
 	});
+
+	// 执行选中点
+	QObject::connect(mainWindow->ui->pushButton_7, &QPushButton::pressed, this, &FSAIApp::excute_selected_teach_point);
+	
+	// 默认两组工艺参数
+	procData = std::vector<TrajectoryConfig<float>>(2);
+	procData[0].speed = 10;
+	procData[1].speed = 20;
+	// 新增工艺
+	QObject::connect(procedureWindow->ui->pushButton_3, &QPushButton::pressed, this, [&]() {
+		int idx = procedureWindow->ui->tabWidget->count();
+		procData.push_back(TrajectoryConfig<float>());
+	});
+
+	// 显示工艺
+	QObject::connect(procedureWindow->ui->tabWidget, &QTabWidget::currentChanged, this, &FSAIApp::load_procedure_param);
+
+	// 保存工艺
+	QObject::connect(procedureWindow->ui->buttonBox, &QDialogButtonBox::accepted, this, &FSAIApp::save_current_procedure_param);
+
 	return 0;
 }
 
 int FSAIApp::init_menu_module() {
 	// 打开工艺设置界面
-	//QObject::connect_robot(mainWindow->ui->pushButton_8, &QPushButton::pressed, procedureWindow.get(), [&]() {
-	//	procedureWindow->show();
-	//	procedureWindow->activateWindow();
-	//});
+	QObject::connect(mainWindow->ui->actionConfigure, &QAction::triggered, this, [&]() {
+		// 更新工艺参数
+		load_procedure_param(procedureWindow->ui->tabWidget->currentIndex());
+		// 打开工艺设置页面
+		procedureWindow->show();
+		procedureWindow->activateWindow();
+	});
 
 	return 0;
 }
@@ -217,6 +248,63 @@ int FSAIApp::init_monitor_module() {
 
 int FSAIApp::init_log_module() {
 	return 0;
+}
+
+int FSAIApp::init_control_module() {
+	// 切换自动/手动
+	QObject::connect(mainWindow->ui->checkBox_2, &QCheckBox::stateChanged, this, [&](int status) {
+		// 手动->自动
+		if (status == 2) {
+			// 关节速度切换到最大
+			robot->set_manual_SpeedRatio(1);
+			// 加减速调大
+			robot->set_acceleration_time(0.2);
+		}
+		// 自动->手动
+		else {
+			// 加减速调小
+			robot->set_acceleration_time(0.5);
+		}
+		update_speedRatio();
+	});
+
+	QObject::connect(mainWindow->ui->spinBox, &QSpinBox::editingFinished, this, [&]() {
+		// 防止重复触发
+		if ((!mainWindow->ui->spinBox->hasFocus()) && (mainWindow->ui->horizontalSlider->value() == mainWindow->ui->spinBox->value())) {
+			return;
+		}
+
+		// 滑块同步速度
+		mainWindow->ui->horizontalSlider->setValue(mainWindow->ui->spinBox->value());
+
+		update_speedRatio();
+	});
+
+	QObject::connect(mainWindow->ui->horizontalSlider, &QSlider::sliderReleased, this, &FSAIApp::update_speedRatio);
+
+	return 0;
+}
+
+void FSAIApp::update_speedRatio() {
+	// 自动模式
+	if (mainWindow->ui->checkBox_2->isChecked()) {
+		robot->set_auto_SpeedRatio(static_cast<float>(mainWindow->ui->spinBox->value()) / 100);
+	}
+	// 手动模式
+	else {
+		robot->set_manual_SpeedRatio(static_cast<float>(mainWindow->ui->spinBox->value()) / 100);
+	}
+}
+
+
+// 连接机器人
+void FSAIApp::switch_connection() {
+	if (robotStatus->online) {
+		disconnect_robot();
+	}
+	else {
+		connect_robot();
+	}
 }
 
 int FSAIApp::connect_robot() {
@@ -231,40 +319,34 @@ int FSAIApp::connect_robot() {
 
 	// 连接成功
 	robotStatus->online = true;
-	mainWindow->ui->pushButton->setText("Disconnect");
 	zScanner->resume();
 
+	mainWindow->refresh_display_switch_online(true);
+	mainWindow->refresh_display_switch_auto(true);
+	update_speedRatio();
 
 	return 0;
 }
 
 int FSAIApp::disconnect_robot() {
 	mainWindow->ui->textBrowser->append("Disconnect");
+	robotStatus->online = false;
+
 	int ret = robot->disconnect();
 	if (ret != 0) {
 		mainWindow->ui->textBrowser->append("<Zmotion>: connect error " + QString::number(ret));
+		robotStatus->online = true;
 		return ret;
 	}
 
 	// 断开成功
-	robotStatus->online = false;
-	mainWindow->ui->pushButton->setText("Connect");
-
+	mainWindow->refresh_display_switch_online(false);
 
 	return 0;
 }
 
 
-void FSAIApp::switch_connection() {
-	if (robotStatus->online) {
-		disconnect_robot();
-	}
-	else {
-		connect_robot();
-	}
-}
-
-
+// 面板数据更新
 void FSAIApp::refresh_monitor() {
 	for (size_t i = 0; i < 9; ++i) {
 		QTableWidgetItem* seqItem = new QTableWidgetItem(QString::number(robotStatus->jPos[i]));
@@ -276,5 +358,133 @@ void FSAIApp::refresh_monitor() {
 
 	mainWindow->ui->radioButton->setChecked(robotStatus->mode == 1);
 	mainWindow->ui->radioButton_2->setChecked(robotStatus->mode == -1);
+}
+
+void FSAIApp::load_procedure_param(int idx) {
+	// 解析工艺参数
+	Weave waveCfg;
+	Arc_WeldingParaItem weldCfg;
+	Track trackCfg;
+	read_weld_param(procData[idx].appendix, waveCfg, weldCfg, trackCfg);
+
+	// 速度
+	procedureWindow->ui->doubleSpinBox_6->setValue(procData[idx].speed);
+
+	// 启用摆焊
+	procedureWindow->ui->groupBox_7->setChecked(waveCfg.Id > 0);
+}
+
+void FSAIApp::save_current_procedure_param() {
+	int idx = procedureWindow->ui->tabWidget->currentIndex();
+	// 解析工艺参数
+	Weave waveCfg;
+	Arc_WeldingParaItem weldCfg;
+	Track trackCfg;
+
+	// 速度
+	procData[idx].speed = procedureWindow->ui->doubleSpinBox_6->value();
+
+	// 启用摆焊
+	waveCfg.Id = procedureWindow->ui->groupBox_7->isChecked() ? 1 : 0;
+
+	procData[idx].set_appendix(serialize_weld_param(waveCfg, weldCfg, trackCfg));
+}
+
+
+// 读取示教点位置
+std::vector<float> FSAIApp::read_teach_point(int row, const std::vector<float>& idxList) {
+	std::vector<float> ans;
+
+	for (auto& idx : idxList) {
+		QString str = mainWindow->ui->tableWidget->item(row, idx)->text();
+		QStringList strList = str.split(",");
+
+		for (auto& word : strList) {
+			ans.push_back(word.toFloat());
+		}
+	}
+	return ans;
+}
+
+void FSAIApp::excute_selected_teach_point() {
+	int row = mainWindow->ui->tableWidget->currentRow();
+	if (row < 0) {
+		mainWindow->ui->textBrowser->append("No teach point specified.");
+		return;
+	}
+
+	// 工艺参数
+	QWidget* item = mainWindow->ui->tableWidget->cellWidget(row, 2);
+	int procIdx = ((QSpinBox*)item)->value();
+	// 轨迹参数
+	TrajectoryConfig<float> trajInfo = procData[procIdx];
+
+	// 获取当前点的运动类型
+	item = mainWindow->ui->tableWidget->cellWidget(row, 1);
+	int mode = ((QComboBox*)item)->currentIndex();
+
+	//float speedRatio = static_cast<float>(mainWindow->ui->spinBox->value()) / 100;
+
+	if (mode == 0) {
+		// 切换到正解模式
+		if (robot->forward_kinematics(10) != 0) {
+			return;
+		}
+
+		std::vector<float> dpos = read_teach_point(row, { 4,5 });
+		robot->moveJ_abs(dpos, trajInfo.speed / 100, false);
+	}
+	else {
+		// 切换到逆解模式
+		if (robot->inverse_kinematics(10) != 0) {
+			return;
+		}
+
+		// 设置起点位置
+		DiscreteTrajectory<float> traj;
+		traj.set_starting_point(robotStatus->cPos);
+
+		// 直线指令
+		if (mode == 1) {
+			std::vector<float> dpos = read_teach_point(row, { 3,5 });
+			traj.add_line(dpos, trajInfo);
+		}
+		// 圆弧指令: 中间点
+		else if (mode == 2) {
+			// 当前点是最后点
+			if (row + 1 >= mainWindow->ui->tableWidget->rowCount()) {
+				mainWindow->ui->textBrowser->append("Error: moveC no end point.");
+				return;
+			}
+			std::vector<float> dpos = read_teach_point(row + 1, { 3,5 });
+			std::vector<float> midpos = read_teach_point(row, { 3,5 });
+			traj.add_arc(dpos, midpos, trajInfo);
+		}
+		// 圆弧指令：终点
+		else if (mode == -1) {
+			// 当前点是第一点
+			if (row < 1) {
+				mainWindow->ui->textBrowser->append("Error: moveC no mid point.");
+				return;
+			}
+			std::vector<float> dpos = read_teach_point(row, { 3,5 });
+			std::vector<float> midpos = read_teach_point(row - 1, { 3,5 });
+			traj.add_arc(dpos, midpos, trajInfo);
+		}
+
+		// 解析工艺参数
+		Weave waveCfg;
+		Arc_WeldingParaItem weldCfg;
+		Track trackCfg;
+		read_weld_param(trajInfo.appendix, waveCfg, weldCfg, trackCfg);
+
+		// 执行轨迹
+		if (waveCfg.Id > 0) {
+			robot->swing_trajectory(traj);
+		}
+		else {
+			robot->execute_discrete_trajectory(traj, false);
+		}
+	}
 }
 

@@ -9,6 +9,8 @@ find_package(ZauxRobot PATHS "C:/Users/15874/CMakeBuilds/417df290-9100-f63e-9ee8
 add_library(qt_ui
   forms/src/fsai_mainWindow.cpp
   forms/temp/fsai_mainWindow_moc.cpp
+  forms/src/fsai_procedure.cpp
+  forms/temp/fsai_procedure_moc.cpp
 )
 target_link_libraries(qt_ui PUBLIC
   Qt5::Core

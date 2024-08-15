@@ -292,7 +292,7 @@
        <item row="0" column="1">
         <widget class="QPushButton" name="pushButton_11">
          <property name="text">
-          <string>Download</string>
+          <string>Reboot</string>
          </property>
         </widget>
        </item>
@@ -313,6 +313,9 @@
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+           <property name="maximum">
+            <number>100</number>
+           </property>
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
@@ -328,6 +331,9 @@
            </property>
            <property name="suffix">
             <string>%</string>
+           </property>
+           <property name="maximum">
+            <number>100</number>
            </property>
           </widget>
          </item>

@@ -22,9 +22,11 @@ MainWindow::MainWindow() {
 	// 初始化日志页面
 	init_log_module();
 
-	// 禁用控制模块
-	// uiMainWindow->groupBox->setEnabled(false);
-	// uiMainWindow->groupBox_2->setEnabled(false);
+	// 切换手动/自动
+	QObject::connect(ui->checkBox_2, &QCheckBox::stateChanged, this, [&](int status) {
+		refresh_display_switch_auto(status == 0);
+	});
+
 }
 
 
@@ -36,7 +38,7 @@ int MainWindow::init_log_module() {
 	QObject::connect(ui->pushButton_9, &QPushButton::pressed, ui->textBrowser, &QTextBrowser::clear);
 
 	QObject::connect(ui->lineEdit, &QLineEdit::editingFinished, this, [&](){
-		ui->textBrowser->append(ui->lineEdit->text());
+		ui->textBrowser->append("> " + ui->lineEdit->text());
 		ui->lineEdit->selectAll();
 	});
 
@@ -117,49 +119,9 @@ int MainWindow::init_jog_module() {
 		}
 	});
 
-  /*
-  for (int i=0; i<9; ++i) {
-    QObject::connect(jogMoveBtn[2*i], &QPushButton::pressed, this, [&, i](){ MainWindow::jog_moving(i,-1*(MainWindow::get_jog_move_type()+1)); });
-    QObject::connect(jogMoveBtn[2*i], &QPushButton::released, this, [&, i](){ MainWindow::jog_moving(i,0); });
-
-    QObject::connect(jogMoveBtn[2*i+1], &QPushButton::pressed, this, [&, i](){ MainWindow::jog_moving(i,MainWindow::get_jog_move_type()+1); });
-    QObject::connect(jogMoveBtn[2*i+1], &QPushButton::released, this, [&, i](){ MainWindow::jog_moving(i,0); });
-  }
-
-  // ***************************** 点动轴号标签 ********************************
-  QObject::connect(ui->radioButton, &QRadioButton::toggled, this, [&](bool flag){
-      if (!flag) return;
-      MainWindow::jogMoveType = 0;
-      ui->textBrowser->append("Change jog move type to " + QString::fromStdString(MainWindow::get_jog_move_type_str()));
-      for (size_t i=0; i<9; ++i) {
-        jogMoveLabel[i]->setText(QString::fromStdString(jointName[jogMoveType][i]));
-      }
-  });
-  QObject::connect(ui->radioButton_2, &QRadioButton::toggled, this, [&](bool flag){
-      if (!flag) return;
-      MainWindow::jogMoveType = 1;
-      ui->textBrowser->append("Change jog move type to " + QString::fromStdString(MainWindow::get_jog_move_type_str()));
-      for (size_t i=0; i<9; ++i) {
-        jogMoveLabel[i]->setText(QString::fromStdString(jointName[jogMoveType][i]));
-      }
-  });
-  QObject::connect(ui->radioButton_3, &QRadioButton::toggled, this, [&](bool flag){
-      if (!flag) return;
-      MainWindow::jogMoveType = 2;
-      ui->textBrowser->append("Change jog move type to " + QString::fromStdString(MainWindow::get_jog_move_type_str()));
-      for (size_t i=0; i<9; ++i) {
-        jogMoveLabel[i]->setText(QString::fromStdString(jointName[jogMoveType][i]));
-      }
-  });
-  */
-
   // ***************************** 速度设置 ********************************
-  QObject::connect(ui->spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), ui->horizontalSlider, &QSlider::setValue);
-  QObject::connect(ui->horizontalSlider, &QSlider::valueChanged, this, [&](int value) {
-      ui->spinBox->setValue(value);
-      // 更新速度
-      //speedRatio = ui->spinBox->value();
-  });
+  //QObject::connect(ui->spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), ui->horizontalSlider, &QSlider::setValue);
+  QObject::connect(ui->horizontalSlider, &QSlider::valueChanged, ui->spinBox, &QSpinBox::setValue);
   return 0;
 }
 
@@ -191,17 +153,12 @@ int MainWindow::init_teach_module() {
 	QObject::connect(ui->pushButton_2, &QPushButton::pressed, this, &MainWindow::record_teach_point);
 	QObject::connect(ui->pushButton_3, &QPushButton::pressed, this, &MainWindow::delete_teach_point);
 
-	// QObject::connect(uiMainWindow->pushButton_8, &QPushButton::pressed, &procedureWindow, [&](){
-	//     procedureWindow.show();
-	//     procedureWindow.activateWindow();
-	// });
-
   return 0;
 }
 
 
 int MainWindow::init_menu_module() {
-	//QObject::connect(ui->actionClose, &QAction::triggered, this, &MainWindow::close);
+	QObject::connect(ui->actionClose, &QAction::triggered, this, &MainWindow::close);
 
 	return 0;
 }
@@ -237,6 +194,24 @@ int MainWindow::init_monitor_module() {
 	return 0;
 }
 
+void MainWindow::refresh_display_switch_auto(bool manual) {
+	ui->checkBox_2->setText(manual ? "Manual" : "Auto  ");
+
+	// todo 默认速度可配置
+	ui->horizontalSlider->setValue(manual ? 10 : 100);
+
+	ui->groupBox_2->setDisabled(!manual);
+	ui->pushButton_4->setDisabled(manual);
+	ui->pushButton_7->setDisabled(manual);
+}
+
+void MainWindow::refresh_display_switch_online(bool online) {
+	ui->pushButton->setText(online ? "Disconnect" : "Connect");
+
+	ui->groupBox->setDisabled(!online);
+	ui->groupBox_2->setDisabled(!online);
+	ui->groupBox_4->setDisabled(!online);
+}
 
 void MainWindow::record_teach_point() {
 	int row = ui->tableWidget->currentRow();
