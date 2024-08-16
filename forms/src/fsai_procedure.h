@@ -22,7 +22,7 @@ private:
 
  Q_OBJECT
 public slots:
-	// void switch_connection();
+	// void switch_online();
 	// void jog_moving(int axis, int type);
 
 };

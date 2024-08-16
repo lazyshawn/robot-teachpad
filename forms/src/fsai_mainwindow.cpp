@@ -2,6 +2,7 @@
 #include "fsai_mainwindow.h"
 
 #include <memory>
+#include<iostream>
 
 
 MainWindow::MainWindow() {
@@ -23,8 +24,9 @@ MainWindow::MainWindow() {
 	init_log_module();
 
 	// 切换手动/自动
-	QObject::connect(ui->checkBox_2, &QCheckBox::stateChanged, this, [&](int status) {
-		refresh_display_switch_auto(status == 0);
+	QObject::connect(ui->checkBox_2, &QCheckBox::clicked, this, [&]() {
+		int autoMode = ui->checkBox_2->isChecked();
+		refresh_display_switch_auto(autoMode);
 	});
 
 }
@@ -194,23 +196,24 @@ int MainWindow::init_monitor_module() {
 	return 0;
 }
 
-void MainWindow::refresh_display_switch_auto(bool manual) {
-	ui->checkBox_2->setText(manual ? "Manual" : "Auto  ");
+void MainWindow::refresh_display_switch_auto(bool autoMode) {
+	ui->checkBox_2->setText(autoMode ? "Auto  " : "Manual");
 
 	// todo 默认速度可配置
-	ui->horizontalSlider->setValue(manual ? 10 : 100);
+	ui->horizontalSlider->setValue(!autoMode ? 10 : 100);
 
-	ui->groupBox_2->setDisabled(!manual);
-	ui->pushButton_4->setDisabled(manual);
-	ui->pushButton_7->setDisabled(manual);
+	ui->groupBox_2->setDisabled(autoMode);
+	ui->pushButton_4->setDisabled(!autoMode);
+	ui->pushButton_7->setDisabled(!autoMode);
 }
 
 void MainWindow::refresh_display_switch_online(bool online) {
 	ui->pushButton->setText(online ? "Disconnect" : "Connect");
 
-	ui->groupBox->setDisabled(!online);
-	ui->groupBox_2->setDisabled(!online);
-	ui->groupBox_4->setDisabled(!online);
+	ui->groupBox->setEnabled(online);
+	ui->groupBox_2->setEnabled(online);
+	ui->groupBox_4->setEnabled(online);
+
 }
 
 void MainWindow::record_teach_point() {

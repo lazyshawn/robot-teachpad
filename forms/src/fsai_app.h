@@ -75,8 +75,10 @@ public:
 	void update_speedRatio();
 
 public slots:
-	void switch_connection();
+	void switch_online();
 	void refresh_monitor();
 	void excute_selected_teach_point();
+	void start_teach_trajectory();
+	void switch_auto(bool autoMode);
 };
 

@@ -125,7 +125,7 @@ FSAIApp::~FSAIApp() {
 // 初始化
 int FSAIApp::init_connect_module() {
 	// 连接模块
-	QObject::connect(mainWindow->ui->pushButton, &QPushButton::pressed, this, &FSAIApp::switch_connection);
+	QObject::connect(mainWindow->ui->pushButton, &QPushButton::pressed, this, &FSAIApp::switch_online);
 
 	return 0;
 }
@@ -213,6 +213,8 @@ int FSAIApp::init_teach_module() {
 
 	// 执行选中点
 	QObject::connect(mainWindow->ui->pushButton_7, &QPushButton::pressed, this, &FSAIApp::excute_selected_teach_point);
+	// 执行示教轨迹
+	QObject::connect(mainWindow->ui->pushButton_4, &QPushButton::pressed, this, &FSAIApp::start_teach_trajectory);
 	
 	// 默认两组工艺参数
 	procData = std::vector<TrajectoryConfig<float>>(2);
@@ -257,6 +259,8 @@ int FSAIApp::init_log_module() {
 int FSAIApp::init_control_module() {
 	// 切换自动/手动
 	QObject::connect(mainWindow->ui->checkBox_2, &QCheckBox::stateChanged, this, [&](int status) {
+		if (!robotStatus->online) return;
+
 		// 手动->自动
 		if (status == 2) {
 			// 关节速度切换到最大
@@ -290,6 +294,8 @@ int FSAIApp::init_control_module() {
 }
 
 void FSAIApp::update_speedRatio() {
+	if (!robotStatus->online) return;
+
 	// 自动模式
 	if (mainWindow->ui->checkBox_2->isChecked()) {
 		robot->set_auto_SpeedRatio(static_cast<float>(mainWindow->ui->spinBox->value()) / 100);
@@ -302,7 +308,7 @@ void FSAIApp::update_speedRatio() {
 
 
 // 连接机器人
-void FSAIApp::switch_connection() {
+void FSAIApp::switch_online() {
 	if (robotStatus->online) {
 		disconnect_robot();
 	}
@@ -325,8 +331,8 @@ int FSAIApp::connect_robot() {
 	robotStatus->online = true;
 	zScanner->resume();
 
+	switch_auto(false);
 	mainWindow->refresh_display_switch_online(true);
-	mainWindow->refresh_display_switch_auto(true);
 	update_speedRatio();
 
 	return 0;
@@ -344,11 +350,17 @@ int FSAIApp::disconnect_robot() {
 	}
 
 	// 断开成功
+	switch_auto(false);
 	mainWindow->refresh_display_switch_online(false);
 
 	return 0;
 }
 
+void FSAIApp::switch_auto(bool autoMode) {
+	mainWindow->ui->checkBox_2->setChecked(autoMode);
+	// 可能不会触发状态转换
+	mainWindow->refresh_display_switch_auto(autoMode);
+}
 
 // 面板数据更新
 void FSAIApp::refresh_monitor() {
@@ -442,8 +454,6 @@ void FSAIApp::excute_selected_teach_point() {
 	item = mainWindow->ui->tableWidget->cellWidget(row, 1);
 	int mode = ((QComboBox*)item)->currentIndex();
 
-	//float speedRatio = static_cast<float>(mainWindow->ui->spinBox->value()) / 100;
-
 	if (mode == 0) {
 		// 切换到正解模式
 		if (robot->forward_kinematics(10) != 0) {
@@ -507,3 +517,97 @@ void FSAIApp::excute_selected_teach_point() {
 	}
 }
 
+// todo 在子线程中执行
+void FSAIApp::start_teach_trajectory() {
+	int rowCount = mainWindow->ui->tableWidget->rowCount();
+	if (rowCount < 1) {
+		mainWindow->ui->textBrowser->append("No teach point specified.");
+		return;
+	}
+
+	// 空间轨迹
+	DiscreteTrajectory<float> traj;
+
+	// 第一个点的运动类型
+	QWidget* item = mainWindow->ui->tableWidget->cellWidget(0, 1);
+	// 执行第一个点
+	bool isFk = ((QComboBox*)item)->currentIndex() > 0 ? false : true;
+	if (((QComboBox*)item)->currentIndex() > 0) {
+		int ret = robot->inverse_kinematics(10);
+		if (ret != 0) return;
+		traj.set_starting_point(robotStatus->cPos);
+	}
+	else {
+		int ret = robot->forward_kinematics(10);
+		if (ret != 0) return;
+	}
+
+	for (int row = 0; row < rowCount; ++row) {
+		// 获取当前点的运动类型
+		item = mainWindow->ui->tableWidget->cellWidget(row, 1);
+		int mode = ((QComboBox*)item)->currentIndex();
+
+		// 工艺参数
+		item = mainWindow->ui->tableWidget->cellWidget(row, 2);
+		int procIdx = ((QSpinBox*)item)->value();
+		// 轨迹参数
+		TrajectoryConfig<float> trajInfo = procData[procIdx];
+
+		if (isFk) {
+			if (mode == 0) {
+				std::vector<float> dpos = read_teach_point(row, { 4,5 });
+				robot->moveJ_abs(dpos, trajInfo.speed / 100, false);
+			}
+			else {
+				// 等待正解运动完成，并切换到逆解
+				robot->wait_idle(robot->jointAxisIdx[0]);
+				robot->inverse_kinematics(10);
+				isFk = false;
+				// 清空轨迹，设置起点
+				traj.set_starting_point(robotStatus->cPos);
+
+				// moveL
+				if (mode == 1) {
+					std::vector<float> dpos = read_teach_point(row, { 3,5 });
+					traj.add_line(dpos, trajInfo);
+				}
+				// moveC2: 跳过moveC1
+				else if (mode == -1) {
+					std::vector<float> dpos = read_teach_point(row, { 3,5 });
+					std::vector<float> midpos = read_teach_point(row - 1, { 3,5 });
+					traj.add_arc(dpos, midpos, trajInfo);
+				}
+			}
+		}
+		else {
+			if (mode == 0) {
+				// 执行逆解
+				robot->swing_trajectory(traj);
+
+				// 等待逆解完成，切换到正解
+				robot->wait_idle(robot->swingAxisIdx[0]);
+				robot->forward_kinematics(10);
+				isFk = true;
+
+				std::vector<float> dpos = read_teach_point(row, { 4,5 });
+				robot->moveJ_abs(dpos, trajInfo.speed / 100, false);
+			}
+			// moveL
+			if (mode == 1) {
+				std::vector<float> dpos = read_teach_point(row, { 3,5 });
+				traj.add_line(dpos, trajInfo);
+			}
+			// moveC2: 跳过moveC1
+			else if (mode == -1) {
+				std::vector<float> dpos = read_teach_point(row, { 3,5 });
+				std::vector<float> midpos = read_teach_point(row - 1, { 3,5 });
+				traj.add_arc(dpos, midpos, trajInfo);
+			}
+		}
+	}
+
+	// 执行最后的空间轨迹
+	if (!isFk) {
+		robot->swing_trajectory(traj);
+	}
+}
