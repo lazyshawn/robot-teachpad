@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <QThread>
+#include <QtConcurrent/QtConcurrent>
 #include <chrono>
 
 #include "fsai_mainwindow.h"
@@ -15,7 +16,9 @@ public:
 	std::vector<float> jPos, cPos;
 };
 
-
+/**
+* @brief  扫描定时器
+*/
 class ZmotionScanner :public QObject {
 	std::shared_ptr<ZauxRobot> robot;
 	std::shared_ptr<RobotStatus> status;
@@ -35,6 +38,7 @@ public slots:
 signals:
 	void trigger_update();
 };
+
 
 
 
@@ -69,7 +73,7 @@ public:
 	int connect_robot();
 	int disconnect_robot();
 
-	std::vector<float> read_teach_point(int row, const std::vector<float>& idxList);
+	std::vector<float> read_teach_point(int row, const std::vector<float>& idxList) const;
 	void load_procedure_param(int idx);
 	void save_current_procedure_param();
 	void update_speedRatio();
@@ -78,7 +82,7 @@ public slots:
 	void switch_online();
 	void refresh_monitor();
 	void excute_selected_teach_point();
-	void start_teach_trajectory();
+	void start_teach_trajectory() const;
 	void switch_auto(bool autoMode);
 };
 

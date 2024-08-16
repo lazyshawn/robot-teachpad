@@ -24,8 +24,8 @@ MainWindow::MainWindow() {
 	init_log_module();
 
 	// 切换手动/自动
-	QObject::connect(ui->checkBox_2, &QCheckBox::clicked, this, [&]() {
-		int autoMode = ui->checkBox_2->isChecked();
+	QObject::connect(ui->checkBox_2, &QCheckBox::stateChanged, this, [&](int state) {
+		int autoMode = state == 2;
 		refresh_display_switch_auto(autoMode);
 	});
 

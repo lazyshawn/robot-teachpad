@@ -204,7 +204,7 @@ int FSAIApp::init_teach_module() {
 
 		// 附加轴位置
 		posStr = QString::number(robotStatus->jPos[robot->jointAxisIdx.size()]);
-		for (size_t i = robot->jointAxisIdx.size()+1; i < robotStatus->jPos.size(); ++i) {
+		for (size_t i = robot->jointAxisIdx.size() + 1; i < robotStatus->jPos.size(); ++i) {
 			posStr += ", " + QString::number(robotStatus->jPos[i]);
 		}
 		item = new QTableWidgetItem(posStr);
@@ -214,7 +214,11 @@ int FSAIApp::init_teach_module() {
 	// 执行选中点
 	QObject::connect(mainWindow->ui->pushButton_7, &QPushButton::pressed, this, &FSAIApp::excute_selected_teach_point);
 	// 执行示教轨迹
-	QObject::connect(mainWindow->ui->pushButton_4, &QPushButton::pressed, this, &FSAIApp::start_teach_trajectory);
+	//QObject::connect(mainWindow->ui->pushButton_4, &QPushButton::pressed, this, &FSAIApp::start_teach_trajectory);
+	QObject::connect(mainWindow->ui->pushButton_4, &QPushButton::pressed, this, [&]() {
+		QtConcurrent::run(this, &FSAIApp::start_teach_trajectory);
+		//std::thread thread = std::thread(&FSAIApp::start_teach_trajectory);
+	});
 	
 	// 默认两组工艺参数
 	procData = std::vector<TrajectoryConfig<float>>(2);
@@ -270,6 +274,7 @@ int FSAIApp::init_control_module() {
 		}
 		// 自动->手动
 		else {
+			robot->set_auto_SpeedRatio(1);
 			// 加减速调小
 			robot->set_acceleration_time(0.5);
 		}
@@ -423,7 +428,7 @@ void FSAIApp::save_current_procedure_param() {
 
 
 // 读取示教点位置
-std::vector<float> FSAIApp::read_teach_point(int row, const std::vector<float>& idxList) {
+std::vector<float> FSAIApp::read_teach_point(int row, const std::vector<float>& idxList) const  {
 	std::vector<float> ans;
 
 	for (auto& idx : idxList) {
@@ -518,7 +523,7 @@ void FSAIApp::excute_selected_teach_point() {
 }
 
 // todo 在子线程中执行
-void FSAIApp::start_teach_trajectory() {
+void FSAIApp::start_teach_trajectory()  const {
 	int rowCount = mainWindow->ui->tableWidget->rowCount();
 	if (rowCount < 1) {
 		mainWindow->ui->textBrowser->append("No teach point specified.");

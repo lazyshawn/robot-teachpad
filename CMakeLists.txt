@@ -2,7 +2,7 @@
 
 project(QtTest VERSION 1.0.0)
 
-find_package(Qt5 PATHS "D:/Qt/Qt5.12.8/5.12.8/msvc2017_64/lib/cmake/Qt5" COMPONENTS Core Widgets LinguistTools REQUIRED)
+find_package(Qt5 PATHS "D:/Qt/Qt5.12.8/5.12.8/msvc2017_64/lib/cmake/Qt5" COMPONENTS Core Widgets LinguistTools Concurrent REQUIRED)
 find_package(ZauxRobot PATHS "C:/Users/15874/CMakeBuilds/417df290-9100-f63e-9ee8-36c4ff5e9300/install")
 
 # Ui
