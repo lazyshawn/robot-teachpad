@@ -70,7 +70,7 @@ void MainWindow::jog_moving(int axis, int type) {
 int MainWindow::init_connect_module() {
 	ui->comboBox->addItem("127.0.0.1");
 	ui->comboBox->addItem("192.168.0.11");
-	ui->comboBox->addItem("169.182.1.11");
+	ui->comboBox->addItem("169.254.110.11");
 	ui->comboBox->addItem("0");
 
 	// 切换连接

@@ -6,6 +6,7 @@
 
 #include "fsai_mainwindow.h"
 #include "fsai_procedure.h"
+#include "fsai_advanceConfigWindow.h"
 
 #include "zmotion_interface.h"
 
@@ -49,6 +50,7 @@ private:
 	// 窗口
 	std::shared_ptr<MainWindow> mainWindow;
 	std::shared_ptr<ProcedureWindow> procedureWindow;
+	std::shared_ptr<AdvanceConfigWindow> advanceConfigWindow;
 
 	std::shared_ptr<ZmotionScanner> zScanner;
 	std::shared_ptr<QThread> zScannerThread;
@@ -74,8 +76,12 @@ public:
 	int disconnect_robot();
 
 	std::vector<float> read_teach_point(int row, const std::vector<float>& idxList) const;
+	// 工艺参数
 	void load_procedure_param(int idx);
 	void save_current_procedure_param();
+	// 配置参数
+	void load_advance_config();
+	void save_advance_config();
 	void update_speedRatio();
 
 public slots:

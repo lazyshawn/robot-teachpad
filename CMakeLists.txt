@@ -11,6 +11,8 @@ add_library(qt_ui
   forms/temp/fsai_mainWindow_moc.cpp
   forms/src/fsai_procedure.cpp
   forms/temp/fsai_procedure_moc.cpp
+  forms/src/fsai_advanceConfigWindow.cpp
+  forms/temp/fsai_advanceConfigWindow_moc.cpp
 )
 target_link_libraries(qt_ui PUBLIC
   Qt5::Core
@@ -22,7 +24,7 @@ target_include_directories(qt_ui PUBLIC
 )
 
 # FSAI app
-add_executable(qt_demo #WIN32
+add_executable(qt_demo WIN32
 	forms/resource/logo.rc
 	forms/src/test.cpp
 

@@ -87,6 +87,7 @@ FSAIApp::FSAIApp() {
 
 	mainWindow = std::shared_ptr<MainWindow>(new MainWindow);
 	procedureWindow = std::shared_ptr<ProcedureWindow>(new ProcedureWindow);
+	advanceConfigWindow = std::shared_ptr<AdvanceConfigWindow>(new AdvanceConfigWindow);
 
 	// 显示主页
 	mainWindow->show();
@@ -230,11 +231,6 @@ int FSAIApp::init_teach_module() {
 		procData.push_back(TrajectoryConfig<float>());
 	});
 
-	// 显示工艺
-	QObject::connect(procedureWindow->ui->tabWidget, &QTabWidget::currentChanged, this, &FSAIApp::load_procedure_param);
-
-	// 保存工艺
-	QObject::connect(procedureWindow->ui->buttonBox, &QDialogButtonBox::accepted, this, &FSAIApp::save_current_procedure_param);
 
 	return 0;
 }
@@ -248,7 +244,23 @@ int FSAIApp::init_menu_module() {
 		procedureWindow->show();
 		procedureWindow->activateWindow();
 	});
+	// 显示工艺
+	QObject::connect(procedureWindow->ui->tabWidget, &QTabWidget::currentChanged, this, &FSAIApp::load_procedure_param);
+	// 保存工艺
+	QObject::connect(procedureWindow->ui->buttonBox, &QDialogButtonBox::accepted, this, &FSAIApp::save_current_procedure_param);
 
+	// 打开轴号设置界面
+	QObject::connect(mainWindow->ui->actionAxis_Configure, &QAction::triggered, this, [&]() {
+		load_advance_config();
+		// 打开轴号设置界面
+		advanceConfigWindow->show();
+		advanceConfigWindow->activateWindow();
+	});
+	// 保存设置
+	QObject::connect(advanceConfigWindow->ui->buttonBox, &QDialogButtonBox::accepted, this, [&]() {
+		save_advance_config();
+		load_advance_config();
+	});
 	return 0;
 }
 
@@ -424,6 +436,57 @@ void FSAIApp::save_current_procedure_param() {
 	waveCfg.Dwell_type = procedureWindow->ui->radioButton_2->isChecked() ? 0 : 1;
 
 	procData[idx].set_appendix(serialize_weld_param(waveCfg, weldCfg, trackCfg));
+}
+
+
+void FSAIApp::load_advance_config() {
+	// 读取当前轴号
+	std::vector<std::vector<int>> axisList = { robot->jointAxisIdx, robot->appAxisIdx, robot->tcpPosAxisIdx, 
+		robot->tcpAngleAxisIdx,robot->camAxisIdx, robot->swingAxisIdx, robot->excuteAxis };
+	std::vector<QComboBox*> combobox = { advanceConfigWindow->ui->comboBox , advanceConfigWindow->ui->comboBox_2,
+		advanceConfigWindow->ui->comboBox_3, advanceConfigWindow->ui->comboBox_4, advanceConfigWindow->ui->comboBox_5,
+		advanceConfigWindow->ui->comboBox_6, advanceConfigWindow->ui->comboBox_7 };
+
+	for (size_t i = 0; i < axisList.size(); ++i) {
+		QString str = QString::number(axisList[i][0]);
+		for (size_t j = 1; j < axisList[i].size(); ++j) {
+			str += ", " + QString::number(axisList[i][j]);
+		}
+
+		// 针对addItem方法可避免重复添加
+		if (combobox[i]->findText(str) == -1) {
+			if (combobox[i]->count() == 4) {
+				//先进先出
+				combobox[i]->removeItem(0);
+			}
+			combobox[i]->addItem(str);
+		}
+	}
+
+}
+
+void FSAIApp::save_advance_config() {
+	// Ref: https://stackoverflow.com/a/55301228
+	std::vector<std::reference_wrapper<std::vector<int>>> axisList = { robot->jointAxisIdx, robot->appAxisIdx, 
+		robot->tcpPosAxisIdx, robot->tcpAngleAxisIdx,robot->camAxisIdx, robot->swingAxisIdx, robot->excuteAxis };
+	std::vector<QComboBox*> combobox = { advanceConfigWindow->ui->comboBox , advanceConfigWindow->ui->comboBox_2,
+		advanceConfigWindow->ui->comboBox_3, advanceConfigWindow->ui->comboBox_4, advanceConfigWindow->ui->comboBox_5,
+		advanceConfigWindow->ui->comboBox_6, advanceConfigWindow->ui->comboBox_7 };
+
+
+	for (size_t i = 0; i < axisList.size(); ++i) {
+		std::vector<int> axis;
+		QString str = combobox[i]->currentText();
+		QStringList strList = str.split(",");
+
+		for (auto& word : strList) {
+			axis.push_back(word.toInt());
+		}
+		axisList[i].get() = axis;
+		//axisList[i]->assign(axis.begin(), axis.end());
+	}
+
+
 }
 
 
