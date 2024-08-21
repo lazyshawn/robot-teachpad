@@ -453,6 +453,7 @@ void FSAIApp::load_advance_config() {
 			str += ", " + QString::number(axisList[i][j]);
 		}
 
+		combobox[i]->setCurrentText(str);
 		// 针对addItem方法可避免重复添加
 		if (combobox[i]->findText(str) == -1) {
 			if (combobox[i]->count() == 4) {
@@ -463,6 +464,16 @@ void FSAIApp::load_advance_config() {
 		}
 	}
 
+	// 关节速度
+	std::vector<QDoubleSpinBox*> speedBox = { advanceConfigWindow->ui->doubleSpinBox, advanceConfigWindow->ui->doubleSpinBox_2,
+		advanceConfigWindow->ui->doubleSpinBox_3,advanceConfigWindow->ui->doubleSpinBox_4,advanceConfigWindow->ui->doubleSpinBox_5,
+		advanceConfigWindow->ui->doubleSpinBox_6,advanceConfigWindow->ui->doubleSpinBox_7,advanceConfigWindow->ui->doubleSpinBox_8,
+		advanceConfigWindow->ui->doubleSpinBox_9,advanceConfigWindow->ui->doubleSpinBox_10,advanceConfigWindow->ui->doubleSpinBox_11 };
+
+	std::vector<float> savedSpeed = robot->get_axis_speed();
+	for (size_t i = 0; i < speedBox.size(); ++i) {
+		speedBox[i]->setValue(savedSpeed[i]);
+	}
 }
 
 void FSAIApp::save_advance_config() {
@@ -473,7 +484,7 @@ void FSAIApp::save_advance_config() {
 		advanceConfigWindow->ui->comboBox_3, advanceConfigWindow->ui->comboBox_4, advanceConfigWindow->ui->comboBox_5,
 		advanceConfigWindow->ui->comboBox_6, advanceConfigWindow->ui->comboBox_7 };
 
-
+	// 轴号
 	for (size_t i = 0; i < axisList.size(); ++i) {
 		std::vector<int> axis;
 		QString str = combobox[i]->currentText();
@@ -485,8 +496,20 @@ void FSAIApp::save_advance_config() {
 		axisList[i].get() = axis;
 		//axisList[i]->assign(axis.begin(), axis.end());
 	}
+	// 更新轴号
+	robot->derive_config();
 
+	// 关节速度
+	std::vector<QDoubleSpinBox*> speedBox = { advanceConfigWindow->ui->doubleSpinBox, advanceConfigWindow->ui->doubleSpinBox_2,
+		advanceConfigWindow->ui->doubleSpinBox_3,advanceConfigWindow->ui->doubleSpinBox_4,advanceConfigWindow->ui->doubleSpinBox_5,
+		advanceConfigWindow->ui->doubleSpinBox_6,advanceConfigWindow->ui->doubleSpinBox_7,advanceConfigWindow->ui->doubleSpinBox_8,
+		advanceConfigWindow->ui->doubleSpinBox_9,advanceConfigWindow->ui->doubleSpinBox_10,advanceConfigWindow->ui->doubleSpinBox_11 };
 
+	std::vector<float> inputSpeed;
+	for (size_t i = 0; i < speedBox.size(); ++i) {
+		inputSpeed.push_back(speedBox[i]->value());
+	}
+	robot->set_axis_speed(inputSpeed);
 }
 
 

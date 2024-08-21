@@ -171,17 +171,13 @@ int MainWindow::init_monitor_module() {
 	rowHeader << "Seq" << "Joint" << "TCP";
 	ui->tableWidget_2->setColumnCount(rowHeader.count());
 	ui->tableWidget_2->setHorizontalHeaderLabels(rowHeader);
-	ui->tableWidget_2->verticalHeader()->setDefaultSectionSize(20);
+
 	// 隐藏列表头
 	ui->tableWidget_2->verticalHeader()->setVisible(false);
 	// 交替色
 	ui->tableWidget_2->setAlternatingRowColors(true);
+	// 隐藏滑块
 	ui->tableWidget_2->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-	ui->tableWidget_2->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-	ui->tableWidget_2->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-	ui->tableWidget_2->setMinimumHeight(380);
-	ui->tableWidget_2->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
 	// 单击选中行
 	ui->tableWidget_2->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -193,6 +189,15 @@ int MainWindow::init_monitor_module() {
 		ui->tableWidget_2->setItem(i, 0, seqItem);
 	}
 
+	// Ref: https://stackoverflow.com/a/37615363
+	ui->tableWidget_2->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+	ui->tableWidget_2->setMinimumHeight(ui->tableWidget_2->verticalHeader()->length() + ui->tableWidget_2->horizontalHeader()->height());
+	//ui->tableWidget_2->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+	//ui->tableWidget_2->verticalHeader()->setDefaultSectionSize(20);
+
+	ui->tableWidget_2->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+	ui->tableWidget_2->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+	//ui->tableWidget_2->setMinimumHeight(380);
 	return 0;
 }
 
