@@ -182,6 +182,12 @@ int FSAIApp::init_jog_module() {
 }
 
 int FSAIApp::init_teach_module() {
+	// 急停
+	QObject::connect(mainWindow->ui->pushButton_6, &QPushButton::pressed, this, [&]() {
+		mainWindow->ui->textBrowser->append("Stop Triggered.");
+		robot->emergency_stop();
+	});
+
 	// 记录示教点
 	QObject::connect(mainWindow->ui->pushButton_2, &QPushButton::pressed, this, [&]() {
 		// 当前行
@@ -608,7 +614,6 @@ void FSAIApp::excute_selected_teach_point() {
 	}
 }
 
-// todo 在子线程中执行
 void FSAIApp::start_teach_trajectory()  const {
 	int rowCount = mainWindow->ui->tableWidget->rowCount();
 	if (rowCount < 1) {

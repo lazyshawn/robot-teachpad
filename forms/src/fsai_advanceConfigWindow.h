@@ -2,7 +2,7 @@
 
 #include <QDialog>
 
-#include "advanceConfigWindow_uic.h"
+#include "ui_advanceConfigWindow.h"
 
 class AdvanceConfigWindow : public QDialog {
 public:

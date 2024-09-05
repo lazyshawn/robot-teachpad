@@ -209,7 +209,7 @@ void MainWindow::refresh_display_switch_auto(bool autoMode) {
 
 	ui->groupBox_2->setDisabled(autoMode);
 	ui->pushButton_4->setDisabled(!autoMode);
-	ui->pushButton_7->setDisabled(!autoMode);
+	//ui->pushButton_7->setDisabled(!autoMode);
 }
 
 void MainWindow::refresh_display_switch_online(bool online) {

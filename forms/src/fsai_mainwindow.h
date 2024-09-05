@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <memory>
-#include "mainWindow_uic.h"
+#include "ui_mainWindow.h"
 
 
 /**

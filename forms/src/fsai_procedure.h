@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <QDialog>
-#include "procedure_uic.h"
+#include "ui_procedure.h"
 
 #include <memory>
 
